@@ -98,6 +98,23 @@ describe('AuthService', () => {
       expect(createCallArg.password).not.toBe('plainpassword');
       expect(createCallArg.password).toMatch(/^\$2[aby]\$/); // bcrypt hash pattern
     });
+
+    it('should register a user with a custom role', async () => {
+      const adminUser = { ...mockUser, role: 'admin' };
+      userRepository.findOne.mockResolvedValue(null);
+      userRepository.create.mockReturnValue(adminUser);
+      userRepository.save.mockResolvedValue(adminUser);
+
+      const result = await service.register({
+        email: 'admin@example.com',
+        password: 'password123',
+        name: 'Admin User',
+        role: 'admin',
+      });
+
+      expect(result.user.role).toBe('admin');
+      expect(result.token).toBe('mock-jwt-token');
+    });
   });
 
   // ─── Login ──────────────────────────────────────────────────────────────────

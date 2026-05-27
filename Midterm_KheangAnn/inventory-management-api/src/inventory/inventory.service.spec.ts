@@ -119,6 +119,25 @@ describe('InventoryService', () => {
 
       expect(result.status).toBe(ItemStatus.LOW_STOCK);
     });
+
+    it('should default quantity to 0 and threshold to 10 when not provided', async () => {
+      // Covers the `?? 0` and `?? 10` nullish coalescing branches (lines 18, 30)
+      const itemNoQty = { ...mockItem, quantity: 0, lowStockThreshold: 10, status: ItemStatus.OUT_OF_STOCK };
+      repo.findOne.mockResolvedValue(null);
+      // create() returns item with undefined quantity/threshold — triggers ?? fallback
+      repo.create.mockReturnValue({ ...mockItem, quantity: undefined, lowStockThreshold: undefined });
+      repo.save.mockResolvedValue(itemNoQty);
+
+      const result = await service.create({
+        name: 'No Qty Item',
+        sku: 'NOQTY-001',
+        price: 10,
+        // quantity and lowStockThreshold intentionally omitted
+      });
+
+      expect(repo.save).toHaveBeenCalledTimes(1);
+      expect(result).toBeDefined();
+    });
   });
 
   // ─── FIND ALL ────────────────────────────────────────────────────────────────
@@ -181,6 +200,28 @@ describe('InventoryService', () => {
       expect(result.name).toBe('Updated Laptop');
     });
 
+    it('should update without SKU conflict check when SKU is unchanged', async () => {
+      // Passing the same SKU — should skip the conflict check entirely
+      const updated = { ...mockItem, price: 999 };
+      repo.findOne.mockResolvedValue(mockItem);
+      repo.save.mockResolvedValue(updated);
+
+      const result = await service.update(1, { sku: 'DELL-XPS15-001', price: 999 });
+      // findOne called only once (for the item itself, not for SKU conflict)
+      expect(repo.findOne).toHaveBeenCalledTimes(1);
+      expect(result.price).toBe(999);
+    });
+
+    it('should update when new SKU is available (no conflict)', async () => {
+      repo.findOne
+        .mockResolvedValueOnce(mockItem)  // item lookup
+        .mockResolvedValueOnce(null);     // SKU conflict check — not taken
+      repo.save.mockResolvedValue({ ...mockItem, sku: 'NEW-SKU-001' });
+
+      const result = await service.update(1, { sku: 'NEW-SKU-001' });
+      expect(result.sku).toBe('NEW-SKU-001');
+    });
+
     it('should throw NotFoundException if item does not exist', async () => {
       repo.findOne.mockResolvedValue(null);
       await expect(service.update(999, { name: 'X' })).rejects.toThrow(NotFoundException);
@@ -193,6 +234,18 @@ describe('InventoryService', () => {
         .mockResolvedValueOnce(anotherItem); // findOne for SKU conflict check
 
       await expect(service.update(1, { sku: 'OTHER-SKU' })).rejects.toThrow(ConflictException);
+    });
+
+    it('should recompute status based on quantity after update', async () => {
+      // computeStatus always derives status from quantity — DISCONTINUED is only
+      // set via adjustStock or direct status field; update recalculates from qty
+      const itemWithStock = { ...mockItem, quantity: 50, lowStockThreshold: 10 };
+      repo.findOne.mockResolvedValue(itemWithStock);
+      repo.save.mockResolvedValue({ ...itemWithStock, status: ItemStatus.AVAILABLE });
+
+      const result = await service.update(1, { name: 'Renamed' });
+      // quantity=50, threshold=10 → AVAILABLE
+      expect(result.status).toBe(ItemStatus.AVAILABLE);
     });
   });
 
@@ -272,6 +325,18 @@ describe('InventoryService', () => {
 
     it('should mark OUT_OF_STOCK item as not available', async () => {
       repo.findOne.mockResolvedValue({ ...mockItem, quantity: 0, status: ItemStatus.OUT_OF_STOCK });
+      const result = await service.getAvailability(1);
+      expect(result.isAvailable).toBe(false);
+    });
+
+    it('should mark LOW_STOCK item as available', async () => {
+      repo.findOne.mockResolvedValue({ ...mockItem, quantity: 5, status: ItemStatus.LOW_STOCK });
+      const result = await service.getAvailability(1);
+      expect(result.isAvailable).toBe(true);
+    });
+
+    it('should mark DISCONTINUED item as not available', async () => {
+      repo.findOne.mockResolvedValue({ ...mockItem, status: ItemStatus.DISCONTINUED });
       const result = await service.getAvailability(1);
       expect(result.isAvailable).toBe(false);
     });

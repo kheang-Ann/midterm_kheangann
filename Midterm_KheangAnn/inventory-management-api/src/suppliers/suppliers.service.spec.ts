@@ -113,6 +113,44 @@ describe('SuppliersService', () => {
       expect(result.name).toBe('Updated Supplier');
     });
 
+    it('should update without email conflict check when no email in dto', async () => {
+      // Covers the `updateSupplierDto.email &&` short-circuit branch (line 16)
+      // When email is absent from the DTO, the whole condition is falsy — no conflict check
+      const updated = { ...mockSupplier, name: 'Name Only Update' };
+      repo.findOne.mockResolvedValue(mockSupplier);
+      repo.save.mockResolvedValue(updated);
+
+      const result = await service.update(1, { name: 'Name Only Update' });
+      // findOne called only once — no email conflict lookup
+      expect(repo.findOne).toHaveBeenCalledTimes(1);
+      expect(result.name).toBe('Name Only Update');
+    });
+
+    it('should update without email conflict check when email is unchanged', async () => {
+      // Passing the same email — should skip the conflict check
+      const updated = { ...mockSupplier, phone: '+1-999-0000' };
+      repo.findOne.mockResolvedValue(mockSupplier);
+      repo.save.mockResolvedValue(updated);
+
+      const result = await service.update(1, {
+        email: 'supplier@techsupplies.com',
+        phone: '+1-999-0000',
+      });
+      // findOne called only once (for the supplier itself)
+      expect(repo.findOne).toHaveBeenCalledTimes(1);
+      expect(result.phone).toBe('+1-999-0000');
+    });
+
+    it('should update when new email is available (no conflict)', async () => {
+      repo.findOne
+        .mockResolvedValueOnce(mockSupplier) // supplier lookup
+        .mockResolvedValueOnce(null);        // email conflict check — not taken
+      repo.save.mockResolvedValue({ ...mockSupplier, email: 'new@example.com' });
+
+      const result = await service.update(1, { email: 'new@example.com' });
+      expect(result.email).toBe('new@example.com');
+    });
+
     it('should throw NotFoundException if supplier does not exist', async () => {
       repo.findOne.mockResolvedValue(null);
       await expect(service.update(999, { name: 'X' })).rejects.toThrow(NotFoundException);
