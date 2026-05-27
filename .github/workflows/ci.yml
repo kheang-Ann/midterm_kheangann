@@ -1,0 +1,103 @@
+name: CI - Run Tests & Notify
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    name: Run Automated Test Suites
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm test
+        env:
+          NODE_ENV: test
+          JWT_SECRET: ci-test-secret-key
+
+      - name: Run E2E tests
+        run: npm run test:e2e
+        env:
+          NODE_ENV: test
+          JWT_SECRET: ci-test-secret-key
+
+      - name: Generate test coverage report
+        if: always()
+        run: npm run test:cov
+        env:
+          NODE_ENV: test
+          JWT_SECRET: ci-test-secret-key
+
+      - name: Get committer email
+        if: always()
+        id: committer
+        run: echo "email=$(git log -1 --pretty=format:'%ae')" >> $GITHUB_OUTPUT
+
+      - name: Send email on success
+        if: success()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          secure: false
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: "✅ [PASS] Inventory API Tests - ${{ github.repository }} @ ${{ github.sha }}"
+          to: ${{ steps.committer.outputs.email }},srengty@gmail.com
+          from: "Inventory API CI <${{ secrets.MAIL_USERNAME }}>"
+          body: |
+            ✅ All tests PASSED successfully!
+
+            Repository : ${{ github.repository }}
+            Branch     : ${{ github.ref_name }}
+            Commit     : ${{ github.sha }}
+            Committer  : ${{ github.actor }}
+            Triggered  : ${{ github.event_name }}
+            Run URL    : https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            Test suites completed:
+            - Unit tests (AuthService, InventoryService, SuppliersService)
+            - E2E tests (Auth, Inventory CRUD, Suppliers CRUD)
+
+      - name: Send email on failure
+        if: failure()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          secure: false
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: "❌ [FAIL] Inventory API Tests - ${{ github.repository }} @ ${{ github.sha }}"
+          to: ${{ steps.committer.outputs.email }},srengty@gmail.com
+          from: "Inventory API CI <${{ secrets.MAIL_USERNAME }}>"
+          body: |
+            ❌ Tests FAILED — please investigate.
+
+            Repository : ${{ github.repository }}
+            Branch     : ${{ github.ref_name }}
+            Commit     : ${{ github.sha }}
+            Committer  : ${{ github.actor }}
+            Triggered  : ${{ github.event_name }}
+            Run URL    : https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            Please check the run URL above for detailed logs and fix the failing tests.
+
+
