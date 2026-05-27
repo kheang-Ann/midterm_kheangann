@@ -12,11 +12,6 @@ jobs:
   test:
     name: Run Automated Test Suites
     runs-on: ubuntu-latest
-    
-    # This forces all "run" steps to execute inside the backend folder
-    defaults:
-      run:
-        working-directory: backend
 
     steps:
       - name: Checkout code
@@ -27,8 +22,6 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          # Tells the cache runner where to find package-lock.json
-          cache-dependency-path: backend/package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -55,11 +48,7 @@ jobs:
       - name: Get committer email
         if: always()
         id: committer
-        # Added "git config --global --add safe.directory" to ensure git commands 
-        # work seamlessly inside the working subdirectory
-        run: |
-          git config --global --add safe.directory /github/workspace
-          echo "email=$(git log -1 --pretty=format:'%ae')" >> $GITHUB_OUTPUT
+        run: echo "email=$(git log -1 --pretty=format:'%ae')" >> $GITHUB_OUTPUT
 
       - name: Send email on success
         if: success()
