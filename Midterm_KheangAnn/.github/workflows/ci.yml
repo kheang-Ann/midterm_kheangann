@@ -1,23 +1,16 @@
-name: CI - Run Tests & Notify
+name: CI - Automated Tests
 
 on:
   push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+    branches: [main]
 
 jobs:
   test:
-    name: Run Automated Test Suites
+    name: Run test suites
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: inventory-management-api
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Node.js
@@ -25,80 +18,64 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
+          cache-dependency-path: social-media/package-lock.json
 
       - name: Install dependencies
+        working-directory: social-media
         run: npm ci
 
-      - name: Run unit tests
-        run: npm test
-        env:
-          NODE_ENV: test
-          JWT_SECRET: ci-test-secret-key
+      - name: Run unit & integration tests
+        working-directory: social-media
+        run: npm test -- --forceExit --ci
 
-      - name: Run E2E tests
-        run: npm run test:e2e
-        env:
-          NODE_ENV: test
-          JWT_SECRET: ci-test-secret-key
+      - name: Run e2e tests
+        working-directory: social-media
+        run: npm run test:e2e -- --forceExit --ci
 
-      - name: Generate test coverage report
-        if: always()
-        run: npm run test:cov
-        env:
-          NODE_ENV: test
-          JWT_SECRET: ci-test-secret-key
-
-      - name: Get committer email
-        if: always()
-        id: committer
-        run: echo "email=$(git log -1 --pretty=format:'%ae')" >> $GITHUB_OUTPUT
-
-      - name: Send email on success
+      # ── Notify on success ───────────────────────────────────────────────────
+      - name: Send success email
         if: success()
         uses: dawidd6/action-send-mail@v3
         with:
-          server_address: smtp.gmail.com
-          server_port: 587
-          secure: false
+          server_address: ${{ secrets.MAIL_SERVER }}
+          server_port: ${{ secrets.MAIL_PORT }}
+          secure: true
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
-          subject: "✅ [PASS] Inventory API Tests - ${{ github.repository }} @ ${{ github.sha }}"
-          to: ${{ steps.committer.outputs.email }},srengty@gmail.com
-          from: "Inventory API CI <${{ secrets.MAIL_USERNAME }}>"
+          subject: "✅ [PASS] Tests passed — ${{ github.repository }} (${{ github.ref_name }})"
+          to: ${{ github.event.head_commit.author.email }}, srengty@gmail.com
+          from: "CI Bot <${{ secrets.MAIL_USERNAME }}>"
           body: |
-            ✅ All tests PASSED successfully!
+            All tests passed for the following commit:
 
             Repository : ${{ github.repository }}
             Branch     : ${{ github.ref_name }}
-            Commit     : ${{ github.sha }}
-            Committer  : ${{ github.actor }}
-            Triggered  : ${{ github.event_name }}
-            Run URL    : https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            Commit SHA : ${{ github.sha }}
+            Author     : ${{ github.event.head_commit.author.name }} <${{ github.event.head_commit.author.email }}>
+            Message    : ${{ github.event.head_commit.message }}
 
-            Test suites completed:
-            - Unit tests (AuthService, InventoryService, SuppliersService)
-            - E2E tests (Auth, Inventory CRUD, Suppliers CRUD)
+            View run   : ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
-      - name: Send email on failure
+      # ── Notify on failure ───────────────────────────────────────────────────
+      - name: Send failure email
         if: failure()
         uses: dawidd6/action-send-mail@v3
         with:
-          server_address: smtp.gmail.com
-          server_port: 587
-          secure: false
+          server_address: ${{ secrets.MAIL_SERVER }}
+          server_port: ${{ secrets.MAIL_PORT }}
+          secure: true
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
-          subject: "❌ [FAIL] Inventory API Tests - ${{ github.repository }} @ ${{ github.sha }}"
-          to: ${{ steps.committer.outputs.email }},srengty@gmail.com
-          from: "Inventory API CI <${{ secrets.MAIL_USERNAME }}>"
+          subject: "❌ [FAIL] Tests failed — ${{ github.repository }} (${{ github.ref_name }})"
+          to: ${{ github.event.head_commit.author.email }}, srengty@gmail.com
+          from: "CI Bot <${{ secrets.MAIL_USERNAME }}>"
           body: |
-            ❌ Tests FAILED — please investigate.
+            Tests FAILED for the following commit. Please review and fix.
 
             Repository : ${{ github.repository }}
             Branch     : ${{ github.ref_name }}
-            Commit     : ${{ github.sha }}
-            Committer  : ${{ github.actor }}
-            Triggered  : ${{ github.event_name }}
-            Run URL    : https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            Commit SHA : ${{ github.sha }}
+            Author     : ${{ github.event.head_commit.author.name }} <${{ github.event.head_commit.author.email }}>
+            Message    : ${{ github.event.head_commit.message }}
 
-            Please check the run URL above for detailed logs and fix the failing tests.
+            View run   : ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
