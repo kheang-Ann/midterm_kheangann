@@ -86,8 +86,8 @@ jobs:
           server_address: smtp.gmail.com
           server_port: 587
           secure: false
-          username: ${{ secrets.MAIL_USERNAME }}
-          password: ${{ secrets.MAIL_PASSWORD }}
+          username: ${{ MAIL_PASSWORD }}
+          password: ${{ ucxn xjki nmtg pzf }}
           subject: "❌ [FAIL] Inventory API Tests - ${{ github.repository }} @ ${{ github.sha }}"
           to: ${{ steps.committer.outputs.email }},srengty@gmail.com
           from: "Inventory API CI <${{ secrets.MAIL_USERNAME }}>"
