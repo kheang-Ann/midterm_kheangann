@@ -2,6 +2,24 @@
 
 A warehouse system REST API built with **NestJS** featuring JWT authentication, inventory item CRUD, stock level tracking, supplier management, and real-time availability updates.
 
+> **📋 For exam submission:** See [SETUP_GITHUB.md](./SETUP_GITHUB.md) for GitHub Actions setup and [TESTING_GUIDE.md](./TESTING_GUIDE.md) for complete testing instructions.
+
+## Quick Start
+
+```bash
+# Install dependencies
+npm install
+
+# Run tests
+npm test                # Unit tests (75 tests)
+npm run test:e2e        # E2E tests (54 tests)
+npm run test:cov        # Coverage report (98.1%)
+
+# Start server
+npm run start:dev       # Development mode
+# Open http://localhost:3000/api/docs for Swagger UI
+```
+
 ## Tech Stack
 
 - **Framework**: NestJS (Node.js / TypeScript)
