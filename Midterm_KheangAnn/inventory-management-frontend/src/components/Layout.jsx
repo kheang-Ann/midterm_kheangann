@@ -18,7 +18,7 @@ const Layout = () => {
         <div className="navbar-nav">
           <Link to="/dashboard" className="nav-link">Dashboard</Link>
           <Link to="/inventory" className="nav-link">Inventory</Link>
-          <span className="nav-link">Welcome, {user?.username}</span>
+          <span className="nav-link">Welcome, {user?.name}</span>
           <button onClick={handleLogout} className="btn-logout">Logout</button>
         </div>
       </nav>

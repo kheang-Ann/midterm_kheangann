@@ -63,6 +63,14 @@ export class InventoryController {
     return this.inventoryService.findBySku(sku);
   }
 
+  @Get(':id/availability')
+  @ApiOperation({ summary: 'Check real-time availability of an item' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Availability status' })
+  getAvailability(@Param('id', ParseIntPipe) id: number) {
+    return this.inventoryService.getAvailability(id);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get an inventory item by ID' })
   @ApiParam({ name: 'id', type: Number })
@@ -70,14 +78,6 @@ export class InventoryController {
   @ApiResponse({ status: 404, description: 'Item not found' })
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.inventoryService.findOne(id);
-  }
-
-  @Get(':id/availability')
-  @ApiOperation({ summary: 'Check real-time availability of an item' })
-  @ApiParam({ name: 'id', type: Number })
-  @ApiResponse({ status: 200, description: 'Availability status' })
-  getAvailability(@Param('id', ParseIntPipe) id: number) {
-    return this.inventoryService.getAvailability(id);
   }
 
   @Patch(':id')

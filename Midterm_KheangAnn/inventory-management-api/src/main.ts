@@ -6,6 +6,12 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // Enable CORS for frontend
+  app.enableCors({
+    origin: 'http://localhost:3000',
+    credentials: true,
+  });
+
   // Global validation pipe
   app.useGlobalPipes(
     new ValidationPipe({
@@ -25,8 +31,8 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
 
-  await app.listen(process.env.PORT ?? 3000);
-  console.log(`Application is running on: http://localhost:${process.env.PORT ?? 3000}`);
-  console.log(`Swagger docs: http://localhost:${process.env.PORT ?? 3000}/api/docs`);
+  await app.listen(process.env.PORT ?? 3001);
+  console.log(`Application is running on: http://localhost:${process.env.PORT ?? 3001}`);
+  console.log(`Swagger docs: http://localhost:${process.env.PORT ?? 3001}/api/docs`);
 }
 bootstrap();
