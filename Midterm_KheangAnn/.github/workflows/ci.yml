@@ -63,7 +63,7 @@ jobs:
           username: ${{ kheangann }}
           password: ${{ ucxn xjki nmtg pzf }}
           subject: "✅ [PASS] Inventory API Tests - ${{ github.repository }} @ ${{ github.sha }}"
-          to: ${{ steps.committer.outputs.email }},srengty@gmail.com
+          to: ${{ steps.committer.outputs.email }},kheangann@gmail.com
           from: "Inventory API CI <${{ kheangann }}>"
           body: |
             ✅ All tests PASSED successfully!
